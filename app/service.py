@@ -34,9 +34,12 @@ class Login:
             session.commit()
         except Exception as e:
             print(e)
-            
-# login = Login()
-# login.create_user('navya', 'test123', 'navya.s@gmail.com')
+
+user_name = input('Enter your name: ') 
+password = input('Enter your password: ')
+email = input('Enter your email address: ')           
+login = Login()
+login.create_user(user_name, password, email)
 # # login.update_user(1,'navya.s','navya.s@gmail.com', 'test123222')
 # login.delete_user(1)
 
