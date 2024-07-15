@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 for nice alerts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <!-- Axios for AJAX requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        #addExpensePopup {
+            display: none;
+            border: 1px solid #ccc;
+            padding: 10px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Expense Tracker Dashboard</h1>
+
+        <!-- Add Expense Button -->
+        <button type="button" class="btn float-right btn-info" data-toggle="modal" data-target="#myModal">Add Expense</button>
+
+        <!-- Modal -->
+        <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Add Expense</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="addExpenseForm">
+                            <div class="form-group">
+                                <label for="expenditure_details">Expenditure Details:</label>
+                                <input type="text" class="form-control" id="expenditure_details" name="expenditure_details" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="expenditure_transaction">Expenditure Transaction:</label>
+                                <input type="number" class="form-control" id="expenditure_transaction" name="expenditure_transaction" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="expenditure_date">Expense Date:</label>
+                                <input type="date" class="form-control" id="expenditure_date" name="expenditure_date" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Expense</button>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Date Range Filter Form -->
+        <form id="filterForm" class="form-inline mb-3">
+            <label for="dateFrom" class="mr-2">From:</label>
+            <input type="date" class="form-control mr-2" id="dateFrom" name="dateFrom">
+            <label for="dateTo" class="mr-2">To:</label>
+            <input type="date" class="form-control mr-2" id="dateTo" name="dateTo">
+            <button type="submit" class="btn-sm btn-primary">Filter</button>
+        </form>
+
+        <!-- Expense Table -->
+        <table id="expenseTable" class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Expenditure Details</th>
+                    <th>Expenditure Transaction</th>
+                </tr>
+            </thead>
+            <tbody id="expenseTableBody">
+                <!-- Expense rows will be dynamically added here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+
+            $('#filterForm').submit(function(event) {
+                event.preventDefault();
+                var dateFrom = $('#dateFrom').val();
+                var dateTo = $('#dateTo').val();
+                fetchFilteredExpenses(dateFrom, dateTo);
+            });
+
+                        // Function to fetch filtered expenses from API and update the table
+                        function fetchFilteredExpenses(dateFrom, dateTo) {
+                            axios.post('/filtered', { dateFrom: dateFrom, dateTo: dateTo })
+                                .then(function(response) {
+                                    var expenses = response.data;
+                                    var tableBody = $('#expenseTableBody');
+                                    tableBody.empty();  // Clear existing table rows
+            
+                                    expenses.forEach(function(expense) {
+                                        var row = '<tr>' +
+                                            '<td>' + expense.id + '</td>' +
+                                            '<td>' + expense.date + '</td>' +
+                                            '<td>' + expense.expenditure_details + '</td>' +
+                                            '<td>' + expense.expenditure_transaction + '</td>' +
+                                            '</tr>';
+                                        tableBody.append(row);  // Append row to table
+                                    });
+                                })
+                                .catch(function(error) {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error fetching filtered expenses',
+                                        text: error.response ? error.response.data : error.message
+                                    });
+                                });
+                        }
+            // Add Expense Form submission handling
+            $('#addExpenseForm').submit(function(event) {
+                event.preventDefault();
+                var formData = {
+                    expenditure_details: $('#expenditure_details').val(),
+                    expenditure_transaction: $('#expenditure_transaction').val(),
+                    expenditure_date: $('#expenditure_date').val()
+                };
+            
+
+                axios.post('/api/add_expense', formData)
+                    .then(function(response) {
+                        if (response.data.success) {
+                            $('#myModal').modal('hide');  // Close modal
+                            $('#addExpenseForm')[0].reset();  // Reset form
+                            fetchExpenses();  // Refresh expense table
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Expense added successfully',
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed to add expense',
+                                text: response.data.message
+                            });
+                        }
+                    })
+                    .catch(function(error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error adding expense',
+                            text: error.response ? error.response.data : error.message
+                        });
+                    });
+            });
+
+            // Function to fetch expenses from API and update the table
+            function fetchExpenses() {
+                axios.get('/api/get_expenses/{{ user_id }}')
+                    .then(function(response) {
+                        var expenses = response.data;
+                        var tableBody = $('#expenseTableBody');
+                        tableBody.empty();  // Clear existing table rows
+
+                        expenses.forEach(function(expense) {
+                            var row = '<tr>' +
+                                '<td>' + expense.id + '</td>' +
+                                '<td>' + expense.date + '</td>' +
+                                '<td>' + expense.expenditure_details + '</td>' +
+                                '<td>' + expense.expenditure_transaction + '</td>' +
+                                '</tr>';
+                            tableBody.append(row);  // Append row to table
+                        });
+                    })
+                    .catch(function(error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error fetching expenses',
+                            text: error.response ? error.response.data : error.message
+                        });
+                    });
+            }
+
+
+            // Initial fetch of expenses when the page loads
+            fetchExpenses();
+        });
+    </script>
+</body>
+</html>
